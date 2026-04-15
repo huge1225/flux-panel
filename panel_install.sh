@@ -160,7 +160,7 @@ show_menu() {
 }
 
 generate_random() {
-  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c16
+  od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
 }
 
 # 删除脚本自身
@@ -1057,7 +1057,7 @@ main() {
   # 显示交互式菜单
   while true; do
     show_menu
-    read -p "请输入选项 (1-5): " choice
+    read -p "请输入选项 (1-6): " choice
 
     case $choice in
       1)
@@ -1091,7 +1091,7 @@ main() {
         exit 0
         ;;
       *)
-        echo "❌ 无效选项，请输入 1-5"
+        echo "❌ 无效选项，请输入 1-6"
         echo ""
         ;;
     esac

@@ -54,7 +54,6 @@ services:
       start_period: 90s
 
   frontend:
-
     image: huge1225/vite-frontend:latest
     container_name: vite-frontend
     restart: unless-stopped

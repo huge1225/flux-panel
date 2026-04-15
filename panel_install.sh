@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # 解决 macOS 下 tr 可能出现的非法字节序列问题
 export LANG=en_US.UTF-8
@@ -7,11 +7,13 @@ export LC_ALL=C
 
 
 
-# 全局下载地址配置
-DOCKER_COMPOSEV4_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/docker-compose-v4.yml"
-DOCKER_COMPOSEV6_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/docker-compose-v6.yml"
-GOST_SQL_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/gost.sql"
-PROXY_SH_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/proxy.sh"
+# 全局下载地址配置（固定不可覆盖）
+RAW_BASE_URL="https://raw.githubusercontent.com/huge1225/flux-panel/refs/heads/main"
+
+DOCKER_COMPOSEV4_URL="${RAW_BASE_URL}/docker-compose-v4.yml"
+DOCKER_COMPOSEV6_URL="${RAW_BASE_URL}/docker-compose-v6.yml"
+GOST_SQL_URL="${RAW_BASE_URL}/gost.sql"
+PROXY_SH_URL="${RAW_BASE_URL}/proxy.sh"
 
 COUNTRY=$(curl -s https://ipinfo.io/country)
 if [ "$COUNTRY" = "CN" ]; then
@@ -158,7 +160,7 @@ show_menu() {
 }
 
 generate_random() {
-  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c16
+  od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
 }
 
 # 删除脚本自身
@@ -1055,7 +1057,7 @@ main() {
   # 显示交互式菜单
   while true; do
     show_menu
-    read -p "请输入选项 (1-5): " choice
+    read -p "请输入选项 (1-6): " choice
 
     case $choice in
       1)
@@ -1089,7 +1091,7 @@ main() {
         exit 0
         ;;
       *)
-        echo "❌ 无效选项，请输入 1-5"
+        echo "❌ 无效选项，请输入 1-6"
         echo ""
         ;;
     esac

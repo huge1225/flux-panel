@@ -7,10 +7,8 @@ export LC_ALL=C
 
 
 
-# 全局下载地址配置（请替换为你自己的仓库）
-PANEL_REPO="${PANEL_REPO:-huge1225/flux-panel}"
-PANEL_REF="${PANEL_REF:-main}"
-RAW_BASE_URL="https://raw.githubusercontent.com/${PANEL_REPO}/refs/heads/${PANEL_REF}"
+# 全局下载地址配置（固定不可覆盖）
+RAW_BASE_URL="https://raw.githubusercontent.com/huge1225/flux-panel/refs/heads/main"
 
 DOCKER_COMPOSEV4_URL="${RAW_BASE_URL}/docker-compose-v4.yml"
 DOCKER_COMPOSEV6_URL="${RAW_BASE_URL}/docker-compose-v6.yml"

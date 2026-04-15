@@ -18,9 +18,7 @@
 ---
 ### Docker Compose部署
 ```bash
-export PANEL_REPO="huge1225/flux-panel"
-export PANEL_REF="main"
-curl -L "https://raw.githubusercontent.com/${PANEL_REPO}/refs/heads/${PANEL_REF}/panel_install.sh" -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
+curl -L "https://raw.githubusercontent.com/huge1225/flux-panel/refs/heads/main/panel_install.sh" -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
 ```
 
 > 如需使用你自己的镜像地址，可额外设置：

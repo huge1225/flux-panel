@@ -1,10 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# 下载地址（请替换为你自己的仓库）
-PANEL_REPO="${PANEL_REPO:-huge1225/flux-panel}"
-DOWNLOAD_TAG="${DOWNLOAD_TAG:-gost-latest}"
-DOWNLOAD_URL="https://github.com/${PANEL_REPO}/releases/download/${DOWNLOAD_TAG}/gost"
+# 下载地址（固定不可覆盖）
+DOWNLOAD_URL="https://github.com/huge1225/flux-panel/releases/download/gost-latest/gost"
 INSTALL_DIR="/etc/gost"
 COUNTRY=$(curl -s https://ipinfo.io/country)
 if [ "$COUNTRY" = "CN" ]; then

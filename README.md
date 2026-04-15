@@ -35,3 +35,4 @@ curl -L "https://raw.githubusercontent.com/huge1225/flux-panel/refs/heads/main/p
 - `docker-compose-v4.yml` / `docker-compose-v6.yml` 中镜像地址已固定为：
   - `huge1225/springboot-backend:latest`
   - `huge1225/vite-frontend:latest`
+- 安装脚本会在启动前自动检测上述镜像是否存在；若仓库镜像暂未推送，会自动下载仓库源码并在本地构建这两个镜像后再启动。

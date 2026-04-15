@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # 解决 macOS 下 tr 可能出现的非法字节序列问题
 export LANG=en_US.UTF-8
@@ -7,11 +7,16 @@ export LC_ALL=C
 
 
 
-# 全局下载地址配置
-DOCKER_COMPOSEV4_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/docker-compose-v4.yml"
-DOCKER_COMPOSEV6_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/docker-compose-v6.yml"
-GOST_SQL_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/gost.sql"
-PROXY_SH_URL="https://raw.githubusercontent.com/bqlpfy/flux-panel/refs/heads/main/proxy.sh"
+# 全局下载地址配置（固定不可覆盖）
+RAW_BASE_URL="https://raw.githubusercontent.com/huge1225/flux-panel/refs/heads/main"
+
+DOCKER_COMPOSEV4_URL="${RAW_BASE_URL}/docker-compose-v4.yml"
+DOCKER_COMPOSEV6_URL="${RAW_BASE_URL}/docker-compose-v6.yml"
+GOST_SQL_URL="${RAW_BASE_URL}/gost.sql"
+PROXY_SH_URL="${RAW_BASE_URL}/proxy.sh"
+BACKEND_IMAGE_PRIMARY="huge1225/springboot-backend:latest"
+FRONTEND_IMAGE_PRIMARY="huge1225/vite-frontend:latest"
+REPO_TARBALL_URL="https://codeload.github.com/huge1225/flux-panel/tar.gz/refs/heads/main"
 
 COUNTRY=$(curl -s https://ipinfo.io/country)
 if [ "$COUNTRY" = "CN" ]; then
@@ -49,6 +54,85 @@ check_docker() {
     exit 1
   fi
   echo "检测到 Docker 命令：$DOCKER_CMD"
+}
+
+inplace_sed() {
+  local expr="$1"
+  local file="$2"
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$expr" "$file"
+  else
+    sed -i '' "$expr" "$file"
+  fi
+}
+
+image_exists_remote() {
+  local image="$1"
+  docker manifest inspect "$image" >/dev/null 2>&1
+}
+
+prepare_compose_images() {
+  if [[ ! -f "docker-compose.yml" ]]; then
+    echo "⚠️ 未找到 docker-compose.yml，跳过镜像预检查"
+    return 0
+  fi
+
+  echo "🔍 检查镜像可用性..."
+  local need_fallback=0
+
+  if ! image_exists_remote "$BACKEND_IMAGE_PRIMARY"; then
+    echo "⚠️ 镜像不可用：$BACKEND_IMAGE_PRIMARY"
+    need_fallback=1
+  fi
+
+  if ! image_exists_remote "$FRONTEND_IMAGE_PRIMARY"; then
+    echo "⚠️ 镜像不可用：$FRONTEND_IMAGE_PRIMARY"
+    need_fallback=1
+  fi
+
+  if [[ "$need_fallback" -eq 0 ]]; then
+    echo "✅ 目标镜像可用，继续使用 huge1225 镜像"
+    return 0
+  fi
+
+  echo "⚠️ 检测到 huge1225 镜像不存在，开始本地构建镜像..."
+  build_images_from_source
+}
+
+build_images_from_source() {
+  local tmp_dir archive_file repo_dir
+  tmp_dir=$(mktemp -d)
+  archive_file="$tmp_dir/flux-panel.tar.gz"
+
+  echo "📥 下载源码包..."
+  if ! curl -L "$REPO_TARBALL_URL" -o "$archive_file"; then
+    echo "❌ 下载源码失败：$REPO_TARBALL_URL"
+    rm -rf "$tmp_dir"
+    exit 1
+  fi
+
+  echo "📦 解压源码..."
+  if ! tar -xzf "$archive_file" -C "$tmp_dir"; then
+    echo "❌ 解压源码失败"
+    rm -rf "$tmp_dir"
+    exit 1
+  fi
+
+  repo_dir=$(find "$tmp_dir" -maxdepth 1 -type d -name "flux-panel-*" | head -n 1)
+  if [[ -z "${repo_dir:-}" ]]; then
+    echo "❌ 未找到源码目录"
+    rm -rf "$tmp_dir"
+    exit 1
+  fi
+
+  echo "🔨 构建后端镜像：$BACKEND_IMAGE_PRIMARY"
+  docker build -t "$BACKEND_IMAGE_PRIMARY" "$repo_dir/springboot-backend"
+
+  echo "🔨 构建前端镜像：$FRONTEND_IMAGE_PRIMARY"
+  docker build -t "$FRONTEND_IMAGE_PRIMARY" "$repo_dir/vite-frontend"
+
+  rm -rf "$tmp_dir"
+  echo "✅ 本地镜像构建完成，将继续使用 huge1225 镜像名启动"
 }
 
 # 检测系统是否支持 IPv6
@@ -158,7 +242,7 @@ show_menu() {
 }
 
 generate_random() {
-  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c16
+  od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
 }
 
 # 删除脚本自身
@@ -200,6 +284,7 @@ install_panel() {
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
   echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
   curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
+  prepare_compose_images
 
   # 检查 gost.sql 是否已存在
   if [[ -f "gost.sql" ]]; then
@@ -247,6 +332,7 @@ update_panel() {
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
   echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
   curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
+  prepare_compose_images
   echo "✅ 下载完成"
 
   # 自动检测并配置 IPv6 支持
@@ -1055,7 +1141,7 @@ main() {
   # 显示交互式菜单
   while true; do
     show_menu
-    read -p "请输入选项 (1-5): " choice
+    read -p "请输入选项 (1-6): " choice
 
     case $choice in
       1)
@@ -1089,7 +1175,7 @@ main() {
         exit 0
         ;;
       *)
-        echo "❌ 无效选项，请输入 1-5"
+        echo "❌ 无效选项，请输入 1-6"
         echo ""
         ;;
     esac

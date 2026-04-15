@@ -1,6 +1,10 @@
 #!/bin/bash
-# 下载地址
-DOWNLOAD_URL="https://github.com/bqlpfy/flux-panel/releases/download/gost-latest/gost"
+set -euo pipefail
+
+# 下载地址（请替换为你自己的仓库）
+PANEL_REPO="${PANEL_REPO:-huge1225/flux-panel}"
+DOWNLOAD_TAG="${DOWNLOAD_TAG:-gost-latest}"
+DOWNLOAD_URL="https://github.com/${PANEL_REPO}/releases/download/${DOWNLOAD_TAG}/gost"
 INSTALL_DIR="/etc/gost"
 COUNTRY=$(curl -s https://ipinfo.io/country)
 if [ "$COUNTRY" = "CN" ]; then
@@ -100,6 +104,73 @@ check_and_install_tcpkill() {
   return 0
 }
 
+# 检查并安装 nft / conntrack（nftables 环境支持）
+check_and_install_nft_tools() {
+  local need_install=0
+
+  if ! command -v nft &> /dev/null; then
+    need_install=1
+  fi
+  if ! command -v conntrack &> /dev/null; then
+    need_install=1
+  fi
+
+  if [[ $need_install -eq 0 ]]; then
+    return 0
+  fi
+
+  OS_TYPE=$(uname -s)
+  if [[ "$OS_TYPE" == "Darwin" ]]; then
+    return 0
+  fi
+
+  if [[ $EUID -ne 0 ]]; then
+    SUDO_CMD="sudo"
+  else
+    SUDO_CMD=""
+  fi
+
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO=$ID
+  elif [ -f /etc/redhat-release ]; then
+    DISTRO="rhel"
+  elif [ -f /etc/debian_version ]; then
+    DISTRO="debian"
+  else
+    return 0
+  fi
+
+  case $DISTRO in
+    ubuntu|debian)
+      $SUDO_CMD apt update &> /dev/null
+      $SUDO_CMD apt install -y nftables conntrack &> /dev/null
+      ;;
+    centos|rhel|fedora)
+      if command -v dnf &> /dev/null; then
+        $SUDO_CMD dnf install -y nftables conntrack-tools &> /dev/null
+      elif command -v yum &> /dev/null; then
+        $SUDO_CMD yum install -y nftables conntrack-tools &> /dev/null
+      fi
+      ;;
+    alpine)
+      $SUDO_CMD apk add --no-cache nftables conntrack-tools &> /dev/null
+      ;;
+    arch|manjaro)
+      $SUDO_CMD pacman -S --noconfirm nftables conntrack-tools &> /dev/null
+      ;;
+    opensuse*|sles)
+      $SUDO_CMD zypper install -y nftables conntrack-tools &> /dev/null
+      ;;
+    gentoo)
+      $SUDO_CMD emerge --ask=n net-firewall/nftables net-firewall/conntrack-tools &> /dev/null
+      ;;
+    void)
+      $SUDO_CMD xbps-install -Sy nftables conntrack-tools &> /dev/null
+      ;;
+  esac
+}
+
 
 # 获取用户输入的配置参数
 get_config_params() {
@@ -137,6 +208,8 @@ install_gost() {
 
     # 检查并安装 tcpkill
   check_and_install_tcpkill
+  # 增加 nftables/conntrack 支持
+  check_and_install_nft_tools
   
 
   mkdir -p "$INSTALL_DIR"
@@ -234,6 +307,8 @@ update_gost() {
   
   # 检查并安装 tcpkill
   check_and_install_tcpkill
+  # 增加 nftables/conntrack 支持
+  check_and_install_nft_tools
   
   # 先下载新版本
   echo "⬇️ 下载最新版本..."

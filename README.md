@@ -21,6 +21,10 @@
 curl -L "https://raw.githubusercontent.com/huge1225/flux-panel/refs/heads/main/panel_install.sh" -o panel_install.sh && chmod +x panel_install.sh && ./panel_install.sh
 ```
 
+> 如需使用你自己的镜像地址，可额外设置：
+> `export BACKEND_IMAGE="huge1225/springboot-backend:latest"`
+> `export FRONTEND_IMAGE="huge1225/vite-frontend:latest"`
+
 
 #### 默认管理员账号
 
